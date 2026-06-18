@@ -1,3 +1,4 @@
+# Dev environment overrides
 global:
   environment: dev
 
@@ -9,7 +10,7 @@ reservation:
       memory: 64Mi
     limits:
       cpu: 200m
-      memory: 256Mi
+      memory: 128Mi
 
 member:
   replicaCount: 1
@@ -19,14 +20,13 @@ member:
       memory: 64Mi
     limits:
       cpu: 200m
-      memory: 256Mi
+      memory: 128Mi
 
-ingress:
-  hosts:
-    - host: dev.api.nekocafe.local
+autoscaling:
+  enabled: false
 
 observability:
-  tracing:
-    samplingRate: 1.0   # 开发环境全量采样
-  logging:
-    level: DEBUG
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false

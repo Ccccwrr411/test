@@ -1,62 +1,28 @@
-.PHONY: up down restart logs test lint clean help
+.PHONY: up down logs test lint clean
 
-# 一键启动完整开发环境
+# Start all services
 up:
-	docker compose up -d --build
-	@echo ""
-	@echo "=========================================="
-	@echo "  NekoCafé Dev Environment Started!"
-	@echo "  Reservation API : http://localhost:8081"
-	@echo "  Member API      : http://localhost:8082"
-	@echo "  Jaeger UI       : http://localhost:16686"
-	@echo "  Prometheus      : http://localhost:9090"
-	@echo "  Grafana         : http://localhost:3000 (admin/nekocafe)"
-	@echo "=========================================="
+	docker compose up -d
 
-# 停止并清理
+# Stop all services
 down:
-	docker compose down -v
+	docker compose down
 
-# 重启所有服务
-restart:
-	docker compose restart
-
-# 查看日志（跟随模式）
+# View logs
 logs:
-	docker compose logs -f --tail=100
+	docker compose logs -f
 
-# 运行测试
+# Run all tests
 test:
-	docker compose exec reservation pytest tests/ -v
-	docker compose exec member npm test
+	cd services/member && npm test
+	cd services/reservation && python -m pytest tests/ -v
 
-# 代码检查
+# Run linters
 lint:
 	cd services/member && npm run lint
 	cd services/reservation && ruff check src/ tests/
-	docker run --rm -i hadolint/hadolint < services/member/Dockerfile
-	docker run --rm -i hadolint/hadolint < services/reservation/Dockerfile
 
-# 清理构建缓存和未使用镜像
+# Clean up
 clean:
-	docker compose down -v --rmi all
+	docker compose down -v
 	docker system prune -f
-
-# 健康检查
-health:
-	@echo "Checking Reservation Service..."
-	@curl -s -o /dev/null -w "Reservation: %{http_code}\n" http://localhost:8081/healthz || echo "Reservation: DOWN"
-	@echo "Checking Member Service..."
-	@curl -s -o /dev/null -w "Member: %{http_code}\n" http://localhost:8082/healthz || echo "Member: DOWN"
-
-# 帮助
-help:
-	@echo "NekoCafé Makefile Commands:"
-	@echo "  make up       — Start all services"
-	@echo "  make down     — Stop and remove all services"
-	@echo "  make restart  — Restart all services"
-	@echo "  make logs     — Tail all logs"
-	@echo "  make test     — Run all tests"
-	@echo "  make lint     — Run all linters"
-	@echo "  make health   — Health check all services"
-	@echo "  make clean    — Full cleanup"

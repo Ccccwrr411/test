@@ -1,0 +1,80 @@
+# K8s native manifests (fallback when not using Helm)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reservation
+  labels:
+    app: nekocafe
+    service: reservation
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nekocafe
+      service: reservation
+  template:
+    metadata:
+      labels:
+        app: nekocafe
+        service: reservation
+    spec:
+      containers:
+      - name: reservation
+        image: ghcr.io/nekocafe/reservation:latest
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: member
+  labels:
+    app: nekocafe
+    service: member
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nekocafe
+      service: member
+  template:
+    metadata:
+      labels:
+        app: nekocafe
+        service: member
+    spec:
+      containers:
+      - name: member
+        image: ghcr.io/nekocafe/member:latest
+        ports:
+        - containerPort: 8081
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi

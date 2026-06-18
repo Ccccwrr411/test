@@ -1,164 +1,36 @@
 version: "3.9"
 
 services:
-  # ===== Reservation Service =====
   reservation:
     build:
-      context: ./services/reservation
+      context: services/reservation
       dockerfile: Dockerfile
     container_name: nekocafe-reservation
     ports:
-      - "8081:8080"
+      - "8080:8080"
     environment:
-      - DATABASE_URL=postgresql://nekocafe:nekocafe@postgres:5432/nekocafe
-      - REDIS_URL=redis://redis:6379/0
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
-      - LOG_LEVEL=INFO
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - PYTHONUNBUFFERED=1
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 10s
+      start_period: 5s
     restart: unless-stopped
-    networks:
-      - nekocafe-net
 
-  # ===== Member Service =====
   member:
     build:
-      context: ./services/member
+      context: services/member
       dockerfile: Dockerfile
     container_name: nekocafe-member
     ports:
-      - "8082:8080"
+      - "8081:8081"
     environment:
-      - DATABASE_URL=postgresql://nekocafe:nekocafe@postgres:5432/nekocafe_member
-      - REDIS_URL=redis://redis:6379/1
-      - JWT_SECRET=dev-secret-change-in-production
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
-      - LOG_LEVEL=INFO
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - PORT=8081
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/healthz', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8081/healthz', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - nekocafe-net
-
-  # ===== PostgreSQL =====
-  postgres:
-    image: postgres:16-alpine
-    container_name: nekocafe-postgres
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: nekocafe
-      POSTGRES_PASSWORD: nekocafe
-      POSTGRES_DB: nekocafe
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nekocafe -d nekocafe"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - nekocafe-net
-
-  # ===== Redis =====
-  redis:
-    image: redis:7-alpine
-    container_name: nekocafe-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
       start_period: 5s
     restart: unless-stopped
-    networks:
-      - nekocafe-net
-
-  # ===== Jaeger (Tracing) =====
-  jaeger:
-    image: jaegertracing/all-in-one:1.57
-    container_name: nekocafe-jaeger
-    ports:
-      - "16686:16686"   # UI
-      - "4317:4317"     # OTLP gRPC
-      - "4318:4318"     # OTLP HTTP
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-    restart: unless-stopped
-    networks:
-      - nekocafe-net
-
-  # ===== Prometheus =====
-  prometheus:
-    image: prom/prometheus:v2.52.0
-    container_name: nekocafe-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./infra/observability/prometheus-rules.yml:/etc/prometheus/rules/nekocafe.yml:ro
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=15d'
-      - '--web.enable-lifecycle'
-    restart: unless-stopped
-    networks:
-      - nekocafe-net
-
-  # ===== Grafana =====
-  grafana:
-    image: grafana/grafana:10.4.3
-    container_name: nekocafe-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=nekocafe
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./grafana-datasources:/etc/grafana/provisioning/datasources:ro
-    depends_on:
-      - prometheus
-    restart: unless-stopped
-    networks:
-      - nekocafe-net
-
-volumes:
-  postgres_data:
-  redis_data:
-  prometheus_data:
-  grafana_data:
-
-networks:
-  nekocafe-net:
-    driver: bridge

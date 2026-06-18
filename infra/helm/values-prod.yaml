@@ -1,51 +1,41 @@
+# Production environment overrides
 global:
   environment: prod
 
 reservation:
-  replicaCount: 4
+  replicaCount: 3
   resources:
     requests:
       cpu: 200m
       memory: 256Mi
     limits:
       cpu: 1000m
-      memory: 1Gi
+      memory: 512Mi
 
 member:
-  replicaCount: 4
+  replicaCount: 3
   resources:
     requests:
       cpu: 200m
       memory: 256Mi
     limits:
       cpu: 1000m
-      memory: 1Gi
+      memory: 512Mi
 
-blueGreen:
+canary:
+  enabled: false
+
+color: blue
+
+autoscaling:
   enabled: true
-  activeColor: blue
-
-ingress:
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-  hosts:
-    - host: api.nekocafe.com
-  tls:
-    - secretName: nekocafe-tls
-      hosts:
-        - api.nekocafe.com
+  minReplicas: 3
+  maxReplicas: 10
 
 observability:
-  tracing:
-    samplingRate: 0.1
-  logging:
-    level: WARN
-
-postgresql:
-  persistence:
-    size: 100Gi
-
-redis:
-  persistence:
-    size: 20Gi
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+  jaeger:
+    enabled: true

@@ -1,52 +1,39 @@
-# syntax=docker/dockerfile:1.6
+# syntax=docker/dockerfile:1
+# NekoCafe Reservation Service — Multi-stage Python build
 
-# ===== Stage 1: Build Dependencies =====
+# Stage 1: Build dependencies
 FROM python:3.12-slim AS build
 WORKDIR /app
-
-# Install build deps
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc g++ libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
-
-# Copy source
 COPY . .
 
-# ===== Stage 2: Production Runtime =====
+# Stage 2: Production runtime
 FROM python:3.12-slim AS runtime
 
-# Security: Create non-root user
+# Create non-root user
 RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
 
-# Install runtime system deps only
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 curl && \
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy Python packages from build stage
+# Copy Python packages and source
 COPY --from=build /root/.local /home/appuser/.local
-
-# Copy application code
 COPY --from=build /app/src ./src
 
-# Set PATH
 ENV PATH=/home/appuser/.local/bin:$PATH
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Change ownership
 RUN chown -R appuser:appgroup /app /home/appuser/.local
 
 USER appuser
 
 EXPOSE 8080
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/healthz || exit 1
 
