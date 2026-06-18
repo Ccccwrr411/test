@@ -43,7 +43,7 @@ jobs:
           ruff check src/ tests/
 
       - name: Lint Dockerfiles
-        uses: hadolint/hadolint-action@v3
+        uses: hadolint/hadolint-action@v2
         with:
           dockerfile: |
             services/member/Dockerfile
