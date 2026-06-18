@@ -1,21 +1,15 @@
 # syntax=docker/dockerfile:1.6
 
-# ===== Stage 1: Install Dependencies =====
-FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts
-
-# ===== Stage 2: Build =====
+# ===== Stage 1: Build & Prune =====
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install --ignore-scripts
 COPY . .
 RUN npm run build 2>/dev/null || true
 RUN npm prune --production
 
-# ===== Stage 3: Production Runtime =====
+# ===== Stage 2: Production Runtime =====
 FROM node:20-alpine AS runtime
 
 # Security: Create non-root user
@@ -28,7 +22,7 @@ RUN apk add --no-cache dumb-init
 WORKDIR /app
 
 # Copy production deps and build output
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/src ./src
 
