@@ -1,6 +1,6 @@
 // NekoCafé Member Service — Express.js
 const express = require('express');
-const { trace, context, SpanStatusCode } = require('@opentelemetry/api');
+const { trace, SpanStatusCode } = require('@opentelemetry/api');
 
 // OpenTelemetry setup (loaded first)
 require('./telemetry');
