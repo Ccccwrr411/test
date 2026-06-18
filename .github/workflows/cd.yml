@@ -102,13 +102,13 @@ jobs:
           chmod 600 $HOME/.kube/config
 
       - name: Helm Lint
-        run: helm lint helm/
+        run: helm lint infra/helm/
 
       - name: Deploy to Dev
         run: |
-          helm upgrade --install nekocafe-dev helm/ \
+          helm upgrade --install nekocafe-dev infra/helm/ \
             --namespace dev --create-namespace \
-            -f helm/values-dev.yaml \
+            -f infra/helm/values-dev.yaml \
             --set image.tag=${{ github.sha }} \
             --set image.repository=ghcr.io/${{ steps.owner.outputs.owner }}/nekocafe/reservation \
             --wait --timeout 5m
@@ -147,9 +147,9 @@ jobs:
       - name: Deploy Canary (5%)
         run: |
           # Deploy canary with 5% traffic weight
-          helm upgrade --install nekocafe-canary helm/ \
+          helm upgrade --install nekocafe-canary infra/helm/ \
             --namespace staging --create-namespace \
-            -f helm/values-staging.yaml \
+            -f infra/helm/values-staging.yaml \
             --set image.tag=${{ github.sha }} \
             --set canary.enabled=true \
             --set canary.weight=5 \
@@ -165,9 +165,9 @@ jobs:
 
       - name: Canary → Full (100%)
         run: |
-          helm upgrade --install nekocafe-staging helm/ \
+          helm upgrade --install nekocafe-staging infra/helm/ \
             --namespace staging --create-namespace \
-            -f helm/values-staging.yaml \
+            -f infra/helm/values-staging.yaml \
             --set image.tag=${{ github.sha }} \
             --set canary.enabled=false \
             --set replicaCount=2 \
@@ -209,9 +209,9 @@ jobs:
           echo "Active: $ACTIVE, Deploying to: $INACTIVE"
 
           # Deploy to inactive environment
-          helm upgrade --install nekocafe-${INACTIVE} helm/ \
+          helm upgrade --install nekocafe-${INACTIVE} infra/helm/ \
             --namespace prod --create-namespace \
-            -f helm/values-prod.yaml \
+            -f infra/helm/values-prod.yaml \
             --set image.tag=${{ github.sha }} \
             --set color=${INACTIVE} \
             --set replicaCount=4 \

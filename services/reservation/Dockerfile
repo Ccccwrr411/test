@@ -33,7 +33,6 @@ COPY --from=build /root/.local /home/appuser/.local
 
 # Copy application code
 COPY --from=build /app/src ./src
-COPY --from=build /app/tests ./tests
 
 # Set PATH
 ENV PATH=/home/appuser/.local/bin:$PATH
