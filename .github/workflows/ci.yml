@@ -126,12 +126,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: CodeQL Init
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript, python
 
       - name: CodeQL Analyze
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
   # ===== Stage 4: Build & Container Scan =====
   build-scan:
@@ -182,12 +182,23 @@ jobs:
           severity: 'HIGH,CRITICAL'
           exit-code: '0'
 
+      - name: Debug — List SARIF files
+        run: |
+          echo "=== Looking for SARIF files ==="
+          find . -name "*.sarif" -type f 2>/dev/null || true
+          ls -la *.sarif 2>/dev/null || echo "No SARIF files in root"
+
       - name: Upload Trivy Reports
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: |
-            trivy-reservation.sarif
-            trivy-member.sarif
+          sarif_file: trivy-reservation.sarif
+        continue-on-error: true
+
+      - name: Upload Trivy Reports (Member)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-member.sarif
+        continue-on-error: true
 
       - name: Image Size Check
         run: |
