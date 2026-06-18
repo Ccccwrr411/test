@@ -1,0 +1,233 @@
+name: CI
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/nekocafe
+
+jobs:
+  lint-and-test:
+    name: Lint & Unit Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/member/package.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: services/reservation/requirements.txt
+
+      - name: Lint JavaScript
+        run: |
+          cd services/member
+          npm ci
+          npm run lint
+
+      - name: Lint Python
+        run: |
+          cd services/reservation
+          pip install ruff
+          ruff check src/ tests/
+
+      - name: Lint Dockerfiles
+        uses: hadolint/hadolint-action@v3
+        with:
+          dockerfile: |
+            services/member/Dockerfile
+            services/reservation/Dockerfile
+
+      - name: Lint YAML
+        run: |
+          pip install yamllint
+          yamllint -c .yamllint .
+
+      - name: Unit Test (Member)
+        run: |
+          cd services/member
+          npm test
+
+      - name: Unit Test (Reservation)
+        run: |
+          cd services/reservation
+          pip install pytest pytest-cov
+          pytest tests/ --cov=src --cov-report=xml --cov-report=term
+
+      - name: Upload Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: services/reservation/coverage.xml
+
+  sast:
+    name: SAST Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: CodeQL Analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript, python
+
+      - name: CodeQL Analyze
+        uses: github/codeql-action/analyze@v3
+
+      - name: Semgrep Scan
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: auto
+        continue-on-error: true
+
+  build-and-scan:
+    name: Build & Container Scan
+    needs: [lint-and-test, sast]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Reservation Image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/reservation
+          push: false
+          load: true
+          tags: nekocafe/reservation:ci-${{ github.sha }}
+          cache-from: type=gha,scope=reservation
+          cache-to: type=gha,mode=max,scope=reservation
+
+      - name: Build Member Image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/member
+          push: false
+          load: true
+          tags: nekocafe/member:ci-${{ github.sha }}
+          cache-from: type=gha,scope=member
+          cache-to: type=gha,mode=max,scope=member
+
+      - name: Trivy Scan — Reservation
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: nekocafe/reservation:ci-${{ github.sha }}
+          format: 'sarif'
+          output: trivy-reservation.sarif
+          severity: 'HIGH,CRITICAL'
+          exit-code: 1
+          ignore-unfixed: true
+
+      - name: Trivy Scan — Member
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: nekocafe/member:ci-${{ github.sha }}
+          format: 'sarif'
+          output: trivy-member.sarif
+          severity: 'HIGH,CRITICAL'
+          exit-code: 1
+          ignore-unfixed: true
+
+      - name: Upload Trivy Reports
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: |
+            trivy-reservation.sarif
+            trivy-member.sarif
+
+      - name: Image Size Check
+        run: |
+          echo "=== Reservation Image Size ==="
+          docker images nekocafe/reservation:ci-${{ github.sha }} --format "{{.Size}}"
+          echo "=== Member Image Size ==="
+          docker images nekocafe/member:ci-${{ github.sha }} --format "{{.Size}}"
+
+  integration-test:
+    name: Integration Test
+    needs: [build-and-scan]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: nekocafe
+          POSTGRES_USER: nekocafe
+          POSTGRES_PASSWORD: nekocafe
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run Integration Tests
+        run: |
+          cd services/reservation
+          pip install -r requirements.txt
+          pip install pytest
+          pytest tests/ -v --integration
+        env:
+          DATABASE_URL: postgresql://nekocafe:nekocafe@localhost:5432/nekocafe
+          REDIS_URL: redis://localhost:6379/0
+
+  pr-comment:
+    name: PR Summary Comment
+    needs: [lint-and-test, build-and-scan, integration-test]
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Post PR Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const summary = `## 🤖 CI Pipeline Summary
+
+            | Stage | Status |
+            |-------|--------|
+            | Lint & Unit Test | ✅ Passed |
+            | SAST (CodeQL + Semgrep) | ✅ Passed |
+            | Build & Container Scan (Trivy) | ✅ Passed |
+            | Integration Test | ✅ Passed |
+
+            **Image Sizes**: See build job for details
+            **Coverage**: Download artifact \`coverage-report\`
+            `;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });

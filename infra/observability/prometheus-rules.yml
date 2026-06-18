@@ -1,0 +1,54 @@
+# NekoCafé Prometheus 告警规则
+
+groups:
+  - name: nekocafe-service-alerts
+    rules:
+      # ===== 1. 服务宕机告警 =====
+      - alert: ServiceDown
+        expr: up{job=~"reservation|member"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "{{ $labels.job }} 服务不可达"
+          description: "{{ $labels.job }} 已超过 1 分钟无心跳，请立即排查"
+
+      # ===== 2. 高错误率告警 =====
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_server_duration_milliseconds_count{http_status_code=~"5.."}[5m])) by (service)
+          /
+          sum(rate(http_server_duration_milliseconds_count[5m])) by (service)
+          > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "{{ $labels.service }} 错误率超过 1%"
+          description: "{{ $labels.service }} 当前错误率 {{ $value | humanizePercentage }}，阈值 1%"
+
+      # ===== 3. P95 延迟过高告警 =====
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(0.95, rate(http_server_duration_milliseconds_bucket[5m])) > 500
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "{{ $labels.service }} P95 延迟超过 500ms"
+          description: "{{ $labels.service }} P95 = {{ $value }}ms，阈值 500ms，需排查慢查询/资源瓶颈"
+
+      # ===== 4. CPU 使用率过高 =====
+      - alert: HighCPUUsage
+        expr: |
+          rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~"reservation|member"}[1m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "{{ $labels.container_label_com_docker_compose_service }} CPU 使用率 > 80%"
+          description: "当前 CPU: {{ $value }}%，可能需要扩容"
