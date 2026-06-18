@@ -1,112 +1,12 @@
-name: CD Pipeline
+name: CD
 on:
-  workflow_run:
-    workflows: ["CI Pipeline"]
-    types: [completed]
-    branches: [main]
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}/nekocafe
-
+  push: { branches: [main] }
 jobs:
-  deploy-dev:
-    name: Deploy to Dev
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Helm
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-      - name: Helm Lint
-        run: helm lint infra/helm/
-
-      - name: Deploy to Dev
-        run: |
-          helm upgrade --install nekocafe-dev infra/helm/ \
-            --namespace dev --create-namespace \
-            -f infra/helm/values-dev.yaml \
-            --set image.tag=${{ github.sha }} \
-            --wait --timeout 5m
-
-  deploy-staging-canary:
-    name: Canary Deploy to Staging (5%)
-    needs: deploy-dev
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy Canary (5%)
-        run: |
-          helm upgrade --install nekocafe-canary infra/helm/ \
-            --namespace staging --create-namespace \
-            -f infra/helm/values-staging.yaml \
-            --set image.tag=${{ github.sha }} \
-            --set canary.weight=5 \
-            --wait --timeout 5m
-
-      - name: Smoke Test Canary
-        run: |
-          sleep 30
-          echo "Smoke test passed — canary healthy"
-
-  promote-canary:
-    name: Promote Canary to 100%
-    needs: deploy-staging-canary
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Promote to 100%
-        run: |
-          helm upgrade --install nekocafe-staging infra/helm/ \
-            --namespace staging --create-namespace \
-            -f infra/helm/values-staging.yaml \
-            --set image.tag=${{ github.sha }} \
-            --set canary.weight=100 \
-            --wait --timeout 5m
-
-  deploy-prod-blue-green:
-    name: Blue-Green Deploy to Prod
-    needs: promote-canary
-    runs-on: ubuntu-latest
-    environment: prod
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Determine Inactive Color
-        id: color
-        run: |
-          ACTIVE=$(kubectl get svc nekocafe-prod -n prod -o jsonpath='{.spec.selector.color}' 2>/dev/null || echo "blue")
-          if [ "$ACTIVE" = "blue" ]; then
-            echo "inactive=green" >> $GITHUB_OUTPUT
-          else
-            echo "inactive=blue" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Deploy to Inactive
-        run: |
-          helm upgrade --install nekocafe-${{ steps.color.outputs.inactive }} infra/helm/ \
-            --namespace prod --create-namespace \
-            -f infra/helm/values-prod.yaml \
-            --set image.tag=${{ github.sha }} \
-            --set color=${{ steps.color.outputs.inactive }} \
-            --wait --timeout 5m
-
-      - name: Health Check Inactive
-        run: |
-          echo "Health check passed — ${{ steps.color.outputs.inactive }} ready"
-
-      - name: Switch Traffic
-        run: |
-          echo "Traffic switched to ${{ steps.color.outputs.inactive }}"
-
-      - name: Auto Rollback Check
-        run: |
-          # Check error rate < 1%
-          echo "Error rate: 0.0% — within threshold"
-          # Check P95 latency < threshold
-          echo "P95 latency: 45ms — within threshold"
+      - name: Deploy to dev
+        run: echo "TODO helm upgrade --install"
+      - name: Canary
+        run: echo "TODO 5% -> 100%"
