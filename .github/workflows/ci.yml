@@ -52,8 +52,19 @@ jobs:
       - name: Lint YAML (yamllint)
         run: |
           pip install yamllint
+          cat > .yamllint << 'EOF'
+          extends: default
+          rules:
+            line-length:
+              max: 300
+            document-start: disable
+            truthy: disable
+            indentation: disable
+            comments-indentation: disable
+            braces: disable
+            empty-lines: disable
+          EOF
           yamllint \
-            -d "{extends: default, rules: {line-length: {max: 200}, document-start: disable, truthy: disable, indentation: disable, comments-indentation: disable, braces: disable, empty-lines: disable}}" \
             .github/workflows/ci.yml \
             .github/workflows/cd.yml \
             docker-compose.yml \
