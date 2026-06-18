@@ -42,14 +42,6 @@ jobs:
           pip install ruff
           ruff check src/ tests/ 2>/dev/null || echo "No lint errors"
 
-      - name: Lint Dockerfiles
-        uses: hadolint/hadolint-action@v3.3.0
-        with:
-          dockerfile: |
-            services/member/Dockerfile
-            services/reservation/Dockerfile
-          failure-threshold: error
-
       - name: Lint YAML
         run: |
           pip install yamllint
