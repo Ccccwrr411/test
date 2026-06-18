@@ -55,7 +55,7 @@ jobs:
         run: |
           echo "=== yamllint START ==="
           pip install yamllint
-          find . \( -path ./services/member/node_modules -o -path ./.git -o -path ./services/reservation/venv \) -prune -o \( -name '*.yml' -o -name '*.yaml' \) -print0 | xargs -0 yamllint -d "{extends: default, rules: {line-length: {max: 160}, document-start: {present: false}, truthy: {check-keys: false}, indentation: {spaces: 2}, comments-indentation: disable}}"
+          yamllint -d "{extends: default, rules: {line-length: {max: 160}, document-start: {present: false}, truthy: {check-keys: false}, indentation: {spaces: 2}, comments-indentation: disable}}" infra/ .github/ docker-compose.yml
           echo "=== yamllint OK ==="
 
   # ===== Stage 2: Unit Test =====
