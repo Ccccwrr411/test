@@ -55,7 +55,9 @@ jobs:
         run: |
           echo "=== yamllint START ==="
           pip install yamllint
-          yamllint -d "{extends: default, rules: {line-length: {max: 160}, document-start: disable, truthy: disable, indentation: {spaces: 2}, comments-indentation: disable, braces: disable, empty-lines: disable}}" infra/k8s-manifests/ infra/helm/values*.yaml infra/helm/Chart.yaml infra/observability/ .github/ docker-compose.yml
+          yamllint \
+            -d "{extends: default, rules: {line-length: {max: 160}, document-start: disable, truthy: disable, indentation: disable, comments-indentation: disable, braces: disable, empty-lines: disable}}" \
+            infra/k8s-manifests/ infra/helm/values*.yaml infra/helm/Chart.yaml infra/observability/ .github/ docker-compose.yml
           echo "=== yamllint OK ==="
 
   # ===== Stage 2: Unit Test =====
