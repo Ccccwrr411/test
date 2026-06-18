@@ -6,7 +6,6 @@ FROM python:3.12-slim AS build
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
-COPY . .
 
 # Stage 2: Production runtime
 FROM python:3.12-slim AS runtime
@@ -22,7 +21,7 @@ WORKDIR /app
 
 # Copy Python packages and source
 COPY --from=build /root/.local /home/appuser/.local
-COPY --from=build /app/src ./src
+COPY src/ ./src/
 
 ENV PATH=/home/appuser/.local/bin:$PATH
 ENV PYTHONUNBUFFERED=1
