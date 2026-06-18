@@ -1,0 +1,51 @@
+global:
+  environment: prod
+
+reservation:
+  replicaCount: 4
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+member:
+  replicaCount: 4
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+blueGreen:
+  enabled: true
+  activeColor: blue
+
+ingress:
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: api.nekocafe.com
+  tls:
+    - secretName: nekocafe-tls
+      hosts:
+        - api.nekocafe.com
+
+observability:
+  tracing:
+    samplingRate: 0.1
+  logging:
+    level: WARN
+
+postgresql:
+  persistence:
+    size: 100Gi
+
+redis:
+  persistence:
+    size: 20Gi
