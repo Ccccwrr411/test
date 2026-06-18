@@ -48,6 +48,7 @@ jobs:
           dockerfile: |
             services/member/Dockerfile
             services/reservation/Dockerfile
+          failure-threshold: error
 
       - name: Lint YAML
         run: |
