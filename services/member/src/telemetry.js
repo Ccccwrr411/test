@@ -1,4 +1,4 @@
-"""OpenTelemetry setup for Member Service (Node.js)."""
+// OpenTelemetry setup for Member Service (Node.js).
 const { NodeSDK } = require('@opentelemetry/sdk-node');
 const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-grpc');
 const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-grpc');
