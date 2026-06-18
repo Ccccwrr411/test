@@ -305,6 +305,9 @@ jobs:
     needs: [build-scan, integration-test]
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
@@ -316,6 +319,7 @@ jobs:
 
       - name: Post PR Comment
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
             const summary = `## CI Pipeline Results
