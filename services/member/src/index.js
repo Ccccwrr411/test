@@ -55,6 +55,17 @@ app.post('/api/members/login', (req, res) => {
   res.json({ token: `jwt_dev_${Date.now()}`, expiresIn: 3600, tokenType: 'Bearer' });
 });
 
+// List member levels (MUST be before /:id to avoid route conflict)
+app.get('/api/members/levels', (req, res) => {
+  res.json([
+    { level: 'BRONZE', minPoints: 0, discount: 0 },
+    { level: 'SILVER', minPoints: 500, discount: 5 },
+    { level: 'GOLD', minPoints: 2000, discount: 10 },
+    { level: 'PLATINUM', minPoints: 5000, discount: 15 },
+    { level: 'DIAMOND', minPoints: 10000, discount: 20 },
+  ]);
+});
+
 // Get member profile
 app.get('/api/members/:id', (req, res) => {
   res.json({
@@ -70,17 +81,6 @@ app.get('/api/members/:id', (req, res) => {
 // Get points balance
 app.get('/api/members/:id/points', (req, res) => {
   res.json({ memberId: req.params.id, balance: 2580, level: 'GOLD', nextLevelPoints: 5000 });
-});
-
-// List member levels
-app.get('/api/members/levels', (req, res) => {
-  res.json([
-    { level: 'BRONZE', minPoints: 0, discount: 0 },
-    { level: 'SILVER', minPoints: 500, discount: 5 },
-    { level: 'GOLD', minPoints: 2000, discount: 10 },
-    { level: 'PLATINUM', minPoints: 5000, discount: 15 },
-    { level: 'DIAMOND', minPoints: 10000, discount: 20 },
-  ]);
 });
 
 // Only listen when run directly (not in tests)
