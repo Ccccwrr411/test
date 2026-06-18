@@ -9,13 +9,15 @@
 | 服务 | 技术栈 | 端口 | 说明 |
 |------|--------|------|------|
 | reservation | Python 3.12 + FastAPI | 8080 | 预约服务：创建/查询/取消预约 |
-| member | Node.js 20 + Express | 8081 | 会员服务：注册/登录/积分/等级 |
+| member | Node.js 22 + Express | 8081 | 会员服务：注册/登录/积分/等级 |
 
 ## 快速启动（30 分钟内）
 
 ### 前置条件
 
 - Docker Desktop 24+
+- Node.js 22+（本地开发需要）
+- Python 3.12+（本地开发需要）
 - Git
 
 ### 一键启动
@@ -31,9 +33,11 @@ docker compose up -d
 ```bash
 # 预约服务健康检查
 curl http://localhost:8080/healthz
+# 预期: {"status":"ok","service":"reservation","timestamp":"..."}
 
 # 会员服务健康检查
 curl http://localhost:8081/healthz
+# 预期: {"status":"ok","service":"member","timestamp":"..."}
 
 # 创建预约
 curl -X POST http://localhost:8080/api/reservations \
@@ -44,6 +48,19 @@ curl -X POST http://localhost:8080/api/reservations \
 curl -X POST http://localhost:8081/api/members/register \
   -H "Content-Type: application/json" \
   -d '{"phone":"13800000001","nickname":"CatLover","password":"test123"}'
+```
+
+### 停止与清理
+
+```bash
+# 停止服务
+docker compose down
+
+# 停止并清理数据卷
+docker compose down -v
+
+# 清理未使用的镜像
+docker image prune -f
 ```
 
 ## 项目结构
