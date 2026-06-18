@@ -1,39 +1,59 @@
-# Rollback 回滚指南
+# NekoCafe Rollback — 一键回滚脚本
 
-## 一键回滚命令
-
-### Kubernetes (Helm)
+## 场景 1: Helm 回滚到上一个版本
 
 ```bash
+#!/bin/bash
+# rollback.sh — 一键回滚到上一个 Release
+
+NAMESPACE=${1:-prod}
+RELEASE=${2:-nekocafe}
+
+echo "Rolling back $RELEASE in namespace $NAMESPACE..."
+
+# 查看历史
+helm history $RELEASE -n $NAMESPACE
+
 # 回滚到上一个版本
-helm rollback nekocafe-reservation -n prod
+helm rollback $RELEASE -n $NAMESPACE
 
-# 回滚到指定版本
-helm rollback nekocafe-reservation 3 -n prod
+# 等待就绪
+kubectl rollout status deployment -n $NAMESPACE -l app=nekocafe --timeout=5m
 
-# 查看历史版本
-helm history nekocafe-reservation -n prod
+echo "Rollback complete. Checking health..."
+kubectl get pods -n $NAMESPACE -l app=nekocafe
 ```
 
-### Docker Compose (本地)
+## 场景 2: 蓝绿部署回滚（切回旧颜色）
 
 ```bash
-# 切换到上一个 Git 版本
-git checkout HEAD~1
-make up
+#!/bin/bash
+# blue-green-rollback.sh
+
+CURRENT=$(kubectl get svc nekocafe-prod -n prod -o jsonpath='{.spec.selector.color}')
+if [ "$CURRENT" = "blue" ]; then
+  PREVIOUS="green"
+else
+  PREVIOUS="blue"
+fi
+
+echo "Current: $CURRENT, Rolling back to: $PREVIOUS"
+kubectl patch svc nekocafe-prod -n prod -p "{\"spec\":{\"selector\":{\"color\":\"$PREVIOUS\"}}}"
+echo "Traffic switched to $PREVIOUS"
+```
+
+## 场景 3: Docker Compose 回滚
+
+```bash
+# 切换到上一个镜像 tag
+export TAG=previous-tag
+docker compose up -d
 ```
 
 ## 自动回滚触发条件
 
-| 指标 | 阈值 | 动作 |
+| 指标 | 阈值 | 持续 |
 |------|------|------|
-| P95 延迟 | > 500ms | 自动回滚 |
-| 错误率 | > 1% | 自动回滚 |
-| 健康检查失败 | 连续 3 次 | 自动回滚 |
-
-## 手动回滚步骤
-
-1. 确认问题：`kubectl -n prod describe pod -l app=nekocafe`
-2. 执行回滚：`helm rollback nekocafe-reservation -n prod --wait`
-3. 验证恢复：`curl -f https://api.nekocafe.com/healthz`
-4. 通知团队：企业微信群 / PagerDuty
+| 错误率 | > 1% | 2 分钟 |
+| P95 延迟 | > 1s | 2 分钟 |
+| 健康检查 | 连续失败 3 次 | - |

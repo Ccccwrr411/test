@@ -1,19 +1,18 @@
-# Default values for NekoCafé Helm Chart
-# Environment-specific overrides: values-dev.yaml / values-staging.yaml / values-prod.yaml
+# Default values for NekoCafe Helm Chart
 
 global:
   environment: dev
-  imageRegistry: ghcr.io
+  registry: ghcr.io
 
-# ===== Reservation Service =====
+# Reservation Service
 reservation:
-  replicaCount: 2
+  enabled: true
+  replicaCount: 1
   image:
-    repository: ghcr.io/ccccwrr411/nekocafe/reservation
-    tag: "0.1.0"
+    repository: ghcr.io/nekocafe/reservation
+    tag: latest
     pullPolicy: IfNotPresent
   service:
-    type: ClusterIP
     port: 8080
     targetPort: 8080
   resources:
@@ -22,134 +21,73 @@ reservation:
       memory: 128Mi
     limits:
       cpu: 500m
-      memory: 512Mi
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 70
-    targetMemoryUtilizationPercentage: 80
-  podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
-  healthCheck:
-    livenessPath: /healthz
-    readinessPath: /healthz
-    initialDelaySeconds: 10
-    periodSeconds: 10
-    timeoutSeconds: 3
-    failureThreshold: 3
+      memory: 256Mi
+  health:
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 3
+      periodSeconds: 5
 
-# ===== Member Service =====
+# Member Service
 member:
-  replicaCount: 2
+  enabled: true
+  replicaCount: 1
   image:
-    repository: ghcr.io/ccccwrr411/nekocafe/member
-    tag: "0.1.0"
+    repository: ghcr.io/nekocafe/member
+    tag: latest
     pullPolicy: IfNotPresent
   service:
-    type: ClusterIP
-    port: 8080
-    targetPort: 8080
+    port: 8081
+    targetPort: 8081
   resources:
     requests:
       cpu: 100m
       memory: 128Mi
     limits:
       cpu: 500m
-      memory: 512Mi
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 8
-    targetCPUUtilizationPercentage: 70
-  podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
-  healthCheck:
-    livenessPath: /healthz
-    readinessPath: /healthz
-    initialDelaySeconds: 10
-    periodSeconds: 10
+      memory: 256Mi
+  health:
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8081
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 8081
+      initialDelaySeconds: 3
+      periodSeconds: 5
 
-# ===== Database =====
-postgresql:
-  enabled: true
-  image: postgres:16-alpine
-  auth:
-    username: nekocafe
-    password: ""      # Injected via Secret
-    database: nekocafe
-  persistence:
-    enabled: true
-    size: 10Gi
-    storageClass: ssd
-
-# ===== Redis =====
-redis:
-  enabled: true
-  image: redis:7-alpine
-  architecture: standalone
-  auth:
-    enabled: false
-  persistence:
-    enabled: true
-    size: 5Gi
-
-# ===== Ingress =====
-ingress:
-  enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-  hosts:
-    - host: api.nekocafe.local
-      paths:
-        - path: /api/reservations
-          pathType: Prefix
-          service: reservation
-        - path: /api/members
-          pathType: Prefix
-          service: member
-  tls:
-    - secretName: nekocafe-tls
-      hosts:
-        - api.nekocafe.local
-
-# ===== Canary Deployment =====
+# Canary deployment
 canary:
   enabled: false
   weight: 5
 
-# ===== Blue-Green =====
-blueGreen:
-  enabled: false
-  activeColor: blue
+# Blue-Green deployment
+color: blue
 
-# ===== Observability =====
+# Autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# Observability
 observability:
-  serviceMonitor:
+  prometheus:
     enabled: true
-    interval: 30s
-  tracing:
-    endpoint: http://jaeger-collector:4317
-    samplingRate: 0.1
-  logging:
-    format: json
-    level: INFO
-
-# ===== Security =====
-security:
-  podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 1001
-    fsGroup: 1001
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop:
-        - ALL
-  networkPolicy:
+  grafana:
+    enabled: true
+  jaeger:
     enabled: true

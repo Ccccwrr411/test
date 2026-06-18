@@ -1,47 +1,63 @@
-# Runbook — NekoCafé 故障处置手册
+# NekoCafe Runbook — 运维手册
 
-## 服务异常告警时
+## 服务列表
 
-### 1. 快速定位
-1. 在 Grafana 查看 P99 延迟 / 错误率面板
-2. 在 Loki 检索最近 5min 的 ERROR 日志：
-   ```
-   {service="reservation"} |= "ERROR"
-   ```
-3. 在 Jaeger 找出涉事 traceId：
-   - 筛选 `http.status_code >= 500`
-   - 查看慢请求（duration > 2s）
+| 服务 | 端口 | 技术栈 | 健康检查 |
+|------|------|--------|----------|
+| reservation | 8080 | Python 3.12 / FastAPI | GET /healthz |
+| member | 8081 | Node.js 20 / Express | GET /healthz |
 
-### 2. 常见问题处置
+## 日常运维
 
-#### 数据库连接超时
-- 症状：`connection refused` / `too many clients`
-- 检查：`kubectl -n prod exec deploy/postgres -- pg_isready`
-- 处置：`kubectl -n prod rollout restart deploy/postgres`
+### 查看服务状态
 
-#### Redis 内存耗尽
-- 症状：`OOM command not allowed`
-- 检查：`redis-cli INFO memory`
-- 处置：扩容 Redis 内存限制 / 清理过期 key
+```bash
+docker compose ps
+kubectl get pods -n prod
+```
 
-#### Kafka 消息积压
-- 症状：consumer lag 持续增长
-- 检查：`kafka-consumer-groups --describe --group nekocafe`
-- 处置：增加消费者实例数
+### 查看日志
 
-#### 镜像拉取失败
-- 症状：`ImagePullBackOff`
-- 检查：`kubectl describe pod -l app=reservation | grep -A5 Events`
-- 处置：确认 GHCR 权限 / 镜像 tag 正确
+```bash
+# 本地
+docker compose logs -f
 
-### 3. 升级流程
-1. 通知运维群
-2. 创建 incident channel
-3. 按 runbook 排查
-4. 30 分钟未解决 → 升级至值班经理
-5. 1 小时未解决 → 升级至 CTO
+# K8s
+kubectl logs -f -l service=reservation -n prod
+kubectl logs -f -l service=member -n prod
+```
 
-### 4. 事后复盘
-- 填写 Postmortem 文档
-- 补充 runbook 条目
-- 添加对应的监控告警
+### 查看监控
+
+1. Grafana: http://localhost:3000
+2. Prometheus: http://localhost:9090
+3. Jaeger: http://localhost:16686
+
+## 故障处理
+
+### 服务无响应
+
+1. 检查 Pod 状态: `kubectl get pods -n <namespace>`
+2. 查看日志: `kubectl logs -l service=<service> -n <namespace> --tail=100`
+3. 检查资源: `kubectl top pods -n <namespace>`
+
+### 数据库连接失败
+
+```bash
+kubectl port-forward svc/postgres 5432:5432 -n prod
+psql -h localhost -U nekocafe -d nekocafe -c "SELECT 1"
+```
+
+### 自动回滚触发条件
+
+- 错误率 > 1%（持续 2 分钟）
+- P95 延迟 > 1s（持续 2 分钟）
+- 健康检查连续失败 3 次
+
+## 环境信息
+
+| 环境 | Namespace | 副本数 | 说明 |
+|------|-----------|--------|------|
+| dev | dev | 1 | 开发测试 |
+| staging | staging | 2 | 预发布 + 金丝雀 |
+| prod | prod | 3 | 生产 + 蓝绿部署 |

@@ -1,20 +1,24 @@
+{{- range $name, $svc := (dict "reservation" .Values.reservation "member" .Values.member) }}
+{{- if $svc.enabled }}
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-svc
+  name: {{ $name }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    app.kubernetes.io/name: {{ .Chart.Name }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/environment: {{ .Values.global.environment }}
+    app: nekocafe
+    service: {{ $name }}
+    env: {{ $.Values.global.environment }}
 spec:
-  type: {{ .Values.service.type }}
-  selector:
-    app: {{ .Chart.Name }}
-    instance: {{ .Release.Name }}
-    environment: {{ .Values.global.environment }}
+  type: ClusterIP
   ports:
-    - name: http
-      port: {{ .Values.service.port }}
-      targetPort: {{ .Values.service.targetPort }}
-      protocol: TCP
-  sessionAffinity: None
+  - port: {{ $svc.service.port }}
+    targetPort: {{ $svc.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    app: nekocafe
+    service: {{ $name }}
+{{- end }}
+{{- end }}
