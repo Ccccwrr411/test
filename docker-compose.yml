@@ -1,6 +1,7 @@
 version: "3.9"
 
 services:
+  # ===== 业务层 =====
   reservation:
     build:
       context: services/reservation
@@ -33,4 +34,61 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
+    restart: unless-stopped
+
+  # ===== 中间件层 =====
+  postgres:
+    image: postgres:16-alpine
+    container_name: nekocafe-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: nekocafe
+      POSTGRES_USER: nekocafe
+      POSTGRES_PASSWORD: nekocafe
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "nekocafe"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: nekocafe-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===== 基础设施层：Prometheus + Grafana =====
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: nekocafe-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: nekocafe-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+    volumes:
+      - ./infra/observability/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infra/observability/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    depends_on:
+      - prometheus
     restart: unless-stopped

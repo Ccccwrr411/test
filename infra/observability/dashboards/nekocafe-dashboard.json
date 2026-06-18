@@ -1,35 +1,106 @@
 {
   "dashboard": {
-    "title": "NekoCafe Service Dashboard",
+    "title": "NekoCafe — 四层可观测性 Dashboard",
+    "uid": "nekocafe-4layer",
+    "tags": ["nekocafe", "4-layer", "observability"],
     "panels": [
       {
-        "title": "QPS (Requests per Second)",
+        "title": "【业务层】QPS (Requests per Second)",
         "type": "graph",
         "targets": [
-          { "expr": "rate(http_requests_total[1m])" }
-        ]
+          { "expr": "rate(http_requests_total[1m])", "legendFormat": "QPS" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
       },
       {
-        "title": "P99 Latency",
+        "title": "【业务层】P99 Latency",
         "type": "graph",
         "targets": [
-          { "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))" }
-        ]
+          { "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))", "legendFormat": "P99" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
       },
       {
-        "title": "Error Rate",
+        "title": "【业务层】Error Rate (5xx)",
         "type": "graph",
         "targets": [
-          { "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m])" }
-        ]
+          { "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m])", "legendFormat": "Error Rate" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
       },
       {
-        "title": "CPU / Memory Usage",
+        "title": "【应用层】Reservation — Request Duration Heatmap",
+        "type": "heatmap",
+        "targets": [
+          { "expr": "rate(http_request_duration_seconds_bucket{job=\"reservation\"}[5m])" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+      },
+      {
+        "title": "【应用层】Member — Request Duration Heatmap",
+        "type": "heatmap",
+        "targets": [
+          { "expr": "rate(http_request_duration_seconds_bucket{job=\"member\"}[5m])" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 }
+      },
+      {
+        "title": "【应用层】Service Health (up)",
+        "type": "stat",
+        "targets": [
+          { "expr": "up", "legendFormat": "{{ job }}" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 }
+      },
+      {
+        "title": "【中间件层】PostgreSQL — Active Connections",
         "type": "graph",
         "targets": [
-          { "expr": "container_cpu_usage_seconds_total" },
-          { "expr": "container_memory_usage_bytes" }
-        ]
+          { "expr": "pg_stat_database_numbackends", "legendFormat": "PG Connections" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 }
+      },
+      {
+        "title": "【中间件层】Redis — Connected Clients",
+        "type": "graph",
+        "targets": [
+          { "expr": "redis_connected_clients", "legendFormat": "Redis Clients" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 }
+      },
+      {
+        "title": "【基础设施层】CPU Usage",
+        "type": "graph",
+        "targets": [
+          { "expr": "rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~\"reservation|member\"}[1m])", "legendFormat": "{{ container_label_com_docker_compose_service }}" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 }
+      },
+      {
+        "title": "【基础设施层】Memory Usage",
+        "type": "graph",
+        "targets": [
+          { "expr": "container_memory_usage_bytes{container_label_com_docker_compose_service=~\"reservation|member|postgres|redis\"}", "legendFormat": "{{ container_label_com_docker_compose_service }}" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 }
+      },
+      {
+        "title": "【基础设施层】Network I/O",
+        "type": "graph",
+        "targets": [
+          { "expr": "rate(container_network_receive_bytes_total[1m])", "legendFormat": "RX {{ container_label_com_docker_compose_service }}" },
+          { "expr": "rate(container_network_transmit_bytes_total[1m])", "legendFormat": "TX {{ container_label_com_docker_compose_service }}" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 }
+      },
+      {
+        "title": "【基础设施层】Disk I/O",
+        "type": "graph",
+        "targets": [
+          { "expr": "rate(container_fs_reads_bytes_total[1m])", "legendFormat": "Read {{ container_label_com_docker_compose_service }}" },
+          { "expr": "rate(container_fs_writes_bytes_total[1m])", "legendFormat": "Write {{ container_label_com_docker_compose_service }}" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 }
       }
     ]
   }
