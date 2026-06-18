@@ -2,7 +2,6 @@
 import logging
 import sys
 import json
-import os
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
