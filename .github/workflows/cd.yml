@@ -13,6 +13,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/nekocafe
 
 jobs:
   build-and-push:
@@ -26,10 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set lower-case owner
-        id: owner
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -42,8 +39,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ steps.owner.outputs.owner }}/nekocafe/reservation
-            ghcr.io/${{ steps.owner.outputs.owner }}/nekocafe/member
+            ghcr.io/${{ env.IMAGE_PREFIX }}/reservation
+            ghcr.io/${{ env.IMAGE_PREFIX }}/member
           tags: |
             type=sha,prefix=,format=short
             type=ref,event=branch
@@ -57,7 +54,7 @@ jobs:
         with:
           context: services/reservation
           push: true
-          tags: ghcr.io/${{ steps.owner.outputs.owner }}/nekocafe/reservation:${{ github.sha }}
+          tags: ghcr.io/${{ env.IMAGE_PREFIX }}/reservation:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=reservation
           cache-to: type=gha,mode=max,scope=reservation
@@ -67,7 +64,7 @@ jobs:
         with:
           context: services/member
           push: true
-          tags: ghcr.io/${{ steps.owner.outputs.owner }}/nekocafe/member:${{ github.sha }}
+          tags: ghcr.io/${{ env.IMAGE_PREFIX }}/member:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=member
           cache-to: type=gha,mode=max,scope=member
@@ -80,10 +77,6 @@ jobs:
     environment: dev
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set lower-case owner
-        id: owner
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
@@ -110,7 +103,7 @@ jobs:
             --namespace dev --create-namespace \
             -f helm/values-dev.yaml \
             --set image.tag=${{ github.sha }} \
-            --set image.repository=ghcr.io/${{ steps.owner.outputs.owner }}/nekocafe/reservation \
+            --set image.repository=ghcr.io/${{ env.IMAGE_PREFIX }}/reservation \
             --wait --timeout 5m
 
       - name: Smoke Test
@@ -128,10 +121,6 @@ jobs:
     environment: staging
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set lower-case owner
-        id: owner
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
       - name: Setup Helm
         uses: azure/setup-helm@v4
@@ -181,10 +170,6 @@ jobs:
     environment: prod
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set lower-case owner
-        id: owner
-        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
       - name: Setup Helm
         uses: azure/setup-helm@v4
