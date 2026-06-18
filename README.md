@@ -1,6 +1,6 @@
 # NekoCafé — DevOps Pipeline & Containerized Deployment
 
-猫咪主题餐饮预约平台 · 实验三源代码与配置仓库、、
+猫咪主题餐饮预约平台 · 实验三源代码与配置仓库
 
 ## 项目概述
 
